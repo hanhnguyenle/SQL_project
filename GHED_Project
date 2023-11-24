@@ -1,0 +1,57 @@
+--Calculate the expenditure share of each sector in total government health expenditure--
+Select country, domestic_general_government_health_expenditure/[current_health_expenditure]*100 as domestic_general_government_health_percentage,
+[domestic_private_health_expenditure]/[current_health_expenditure]*100 as domestic_private_health_percentage, 
+[external_health_expenditure]/[current_health_expenditure]*100 as external_health_percentage
+
+From dbo.GHED_data
+Where current_health_expenditure is not NULL and current_health_expenditure not like 0
+
+--Population and income level of countries in the year of 2020--
+select country, income, population
+From dbo.GHED_data
+where year ='2020'
+Order by 1
+
+--Population of each income level in the year of 2020--
+select income,sum(population) as population_of_income_levels
+From dbo.GHED_data
+where year ='2020'
+Group by income
+
+--Put the data in time order to see the growth--
+with Sector_percentage as (Select country, year, domestic_general_government_health_expenditure/[current_health_expenditure]*100 as domestic_general_government_health_percentage,
+[domestic_private_health_expenditure]/[current_health_expenditure]*100 as domestic_private_health_percentage, 
+[external_health_expenditure]/[current_health_expenditure]*100 as external_health_percentage
+From dbo.GHED_data
+Where current_health_expenditure is not NULL and current_health_expenditure not like 0) 
+
+
+Select country, year, domestic_general_government_health_percentage, domestic_private_health_percentage, external_health_percentage,
+ROW_NUMBER() OVER (Partition by country order by year)
+From Sector_percentage
+
+
+--Current health expenditure of each income level in the year of 2020--
+select income, sum(current_health_expenditure)
+From dbo.GHED_data
+where year ='2020'
+Group by income
+
+-- Calculate the share--
+WITH sector_CEH AS (
+    SELECT income,  SUM(current_health_expenditure) AS income_level_CEH
+    FROM dbo.GHED_data
+    WHERE year = '2020'
+    GROUP BY income),
+tot_CEH AS (
+    SELECT
+        SUM(current_health_expenditure) AS totalCEH
+    FROM GHED_data
+    WHERE year = '2020')
+
+SELECT
+    sector_CEH.income,
+    sector_CEH.income_level_CEH / tot_CEH.totalCEH AS income_percentage
+FROM sector_CEH
+JOIN tot_CEH
+ON 1 = 1;
